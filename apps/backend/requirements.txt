@@ -1,0 +1,61 @@
+sentence-transformers
+
+# FastAPI and server
+fastapi
+uvicorn
+python-multipart
+pydantic
+pydantic-settings
+email-validator
+
+# Authentication and security
+python-jose[cryptography]
+passlib[bcrypt]
+python-jose
+
+# Database
+motor
+pymongo
+
+# AWS
+boto3
+
+# Vector database and embeddings
+pinecone
+langchain
+openai
+langchain_community
+langchain_openai
+langgraph
+
+# Background tasks
+celery
+redis
+
+# Utils
+python-dotenv
+requests
+aiohttp
+structlog
+
+# Testing
+pytest
+pytest-asyncio
+httpx
+
+# Optional: PDF processing
+PyPDF2
+pdf2image
+pdfplumber
+pdfminer.six
+
+# Text processing
+tiktoken
+nltk
+langchain_text_splitters
+langchain_core
+
+# Optional: Web scraping
+beautifulsoup4
+
+beanie

@@ -1,0 +1,7 @@
+Model Name,Accuracy (%),ROUGE-1,ROUGE-2,SEM SCORE,G-EVAL,ROUGE-SEM
+Fine-tuned Language Model (Google Flan-T5),44,0.44,0.21,0.28,1.2,0.53
+PEFT & QLoRA Fine-Tuned Llama 3 Model (3.2B) [From HF],50,0.39,0.16,0.59,2.2,0.57
+Naive RAG,54,0.41,0.21,0.7,2.6,0.62
+Fine-tuned RAG,66,0.45,0.24,0.77,2.6,0.66
+RAG Fusion,74,0.48,0.24,0.8,3.2,0.7
+Fine Tuned RAG Fusion,83,0.48,0.27,0.83,3.6,0.69

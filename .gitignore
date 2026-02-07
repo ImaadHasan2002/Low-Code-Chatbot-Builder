@@ -1,0 +1,13 @@
+/.venv
+/notes
+__pycache__/
+/test.py
+node_modules
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
