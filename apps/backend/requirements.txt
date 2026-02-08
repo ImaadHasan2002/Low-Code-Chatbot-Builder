@@ -1,4 +1,8 @@
 sentence-transformers
+transformers
+huggingface-hub
+accelerate
+torch
 
 # FastAPI and server
 fastapi
@@ -57,5 +61,7 @@ langchain_core
 
 # Optional: Web scraping
 beautifulsoup4
+lxml
+html5lib
 
 beanie

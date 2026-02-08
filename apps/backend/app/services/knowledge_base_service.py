@@ -53,8 +53,20 @@ class KnowledgeBaseService(BaseKnowledgebaseService):
         # Save to get the ID
         saved_kb = await self._save_to_db(knowledge_base)
         
-        # Get the raw text data
-        raw_texts = parse_data(link)
+        # Get scraping configuration from advanced config
+        max_pages = self.advanced_config.scraping_max_pages if self.advanced_config else 50
+        max_depth = self.advanced_config.scraping_max_depth if self.advanced_config else 3
+        timeout = self.advanced_config.scraping_timeout if self.advanced_config else 10
+        same_domain_only = self.advanced_config.scraping_same_domain_only if self.advanced_config else True
+        
+        # Get the raw text data with recursive scraping
+        raw_texts = parse_data(
+            link,
+            max_pages=max_pages,
+            max_depth=max_depth,
+            timeout=timeout,
+            same_domain_only=same_domain_only
+        )
         
         # Convert to Document objects
         documents = []

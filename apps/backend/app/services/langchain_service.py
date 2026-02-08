@@ -2,6 +2,7 @@ from typing import List, Dict, Any, Optional
 from abc import ABC, abstractmethod
 import uuid
 from pathlib import Path
+import logging
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
@@ -22,39 +23,124 @@ from ..services.pinecone_service import PineconeService
 from ..utils.preprocessing import TextSplitter, DocumentParser
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
   
 class CustomizableEmbeddingModel:
-    """Wrapper for SentenceTransformer models with configurable parameters."""
+    """Wrapper for SentenceTransformer and HuggingFace models with configurable parameters."""
     
     SUPPORTED_MODELS = {
         "stsb-roberta-large": {
             "dimensions": 1024,
-            "description": "Sentence Transformers model optimized for semantic textual similarity"
+            "description": "Sentence Transformers model optimized for semantic textual similarity",
+            "type": "sentence-transformers"
         },
         "mixedbread-ai/mxbai-embed-large-v1": {
             "dimensions": 1024,
-            "description": "Sentence Transformers model by MixedBread AI"
+            "description": "Sentence Transformers model by MixedBread AI",
+            "type": "sentence-transformers"
         },
         "multilingual-e5-large": {
             "dimensions": 1024,
-            "description": "Multilingua*l embedding model"
+            "description": "Multilingual embedding model",
+            "type": "pinecone-inference"
+        },
+        "BAAI/bge-large-en-v1.5": {
+            "dimensions": 1024,
+            "description": "BGE Large English model from HuggingFace",
+            "type": "huggingface"
+        },
+        "sentence-transformers/all-mpnet-base-v2": {
+            "dimensions": 768,
+            "description": "All MPNet Base V2 from HuggingFace",
+            "type": "huggingface"
+        },
+        "intfloat/e5-large-v2": {
+            "dimensions": 1024,
+            "description": "E5 Large V2 from HuggingFace",
+            "type": "huggingface"
         }
     }
     
-    def __init__(self, model_name: str = "stsb-roberta-large"):
-        if model_name not in self.SUPPORTED_MODELS:
-            raise ValueError(f"Model {model_name} not supported. Choose from: {list(self.SUPPORTED_MODELS.keys())}")
+    def __init__(
+        self, 
+        model_name: str = "stsb-roberta-large",
+        use_custom_model: bool = False,
+        custom_model_name: Optional[str] = None,
+        huggingface_token: Optional[str] = None
+    ):
+        """
+        Initialize embedding model.
         
-        self.model_name = model_name
-        self.dimensions = self.SUPPORTED_MODELS[model_name]["dimensions"]
+        Args:
+            model_name: Name of the model from SUPPORTED_MODELS
+            use_custom_model: Whether to use a custom HuggingFace model
+            custom_model_name: Custom HuggingFace model name/path
+            huggingface_token: HuggingFace API token for private models
+        """
+        self.use_custom_model = use_custom_model
+        self.huggingface_token = huggingface_token
         
-        # Load model on initialization for sentence_transformers
-        if model_name != "multilingual-e5-large":
-            self.model = SentenceTransformer(model_name)
+        if use_custom_model and custom_model_name:
+            # Load custom HuggingFace model
+            self.model_name = custom_model_name
+            self.model_type = "huggingface"
+            try:
+                from transformers import AutoTokenizer, AutoModel
+                import torch
+                
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    custom_model_name,
+                    token=huggingface_token
+                )
+                self.model = AutoModel.from_pretrained(
+                    custom_model_name,
+                    token=huggingface_token
+                )
+                self.device = "cuda" if torch.cuda.is_available() else "cpu"
+                self.model.to(self.device)
+                self.model.eval()
+                
+                # Try to infer dimensions from model config
+                self.dimensions = self.model.config.hidden_size
+                logger.info(f"Loaded custom HuggingFace model: {custom_model_name}")
+            except Exception as e:
+                logger.error(f"Error loading custom HuggingFace model: {e}")
+                # Fallback to default model
+                self.use_custom_model = False
+                model_name = "stsb-roberta-large"
+        
+        if not use_custom_model or not custom_model_name:
+            if model_name not in self.SUPPORTED_MODELS:
+                raise ValueError(f"Model {model_name} not supported. Choose from: {list(self.SUPPORTED_MODELS.keys())}")
+            
+            self.model_name = model_name
+            self.model_type = self.SUPPORTED_MODELS[model_name]["type"]
+            self.dimensions = self.SUPPORTED_MODELS[model_name]["dimensions"]
+            
+            # Load model based on type
+            if self.model_type == "sentence-transformers":
+                self.model = SentenceTransformer(model_name)
+            elif self.model_type == "huggingface":
+                from transformers import AutoTokenizer, AutoModel
+                import torch
+                
+                self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+                self.model = AutoModel.from_pretrained(model_name)
+                self.device = "cuda" if torch.cuda.is_available() else "cpu"
+                self.model.to(self.device)
+                self.model.eval()
+    
+    def _mean_pooling(self, model_output, attention_mask):
+        """Mean pooling for HuggingFace models."""
+        import torch
+        
+        token_embeddings = model_output[0]
+        input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+        return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
     
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Embed a list of documents."""
-        if self.model_name == "multilingual-e5-large":
+        if self.model_type == "pinecone-inference":
             # Use Pinecone's inference API for this specific model
             pc = Pinecone(api_key=settings.PINECONE_API_KEY)
             embeddings = pc.inference.embed(
@@ -63,13 +149,46 @@ class CustomizableEmbeddingModel:
                 parameters={"input_type": "passage", "truncate": "END"}
             )
             return [e["values"] for e in embeddings]
-        else:
-            # Use sentence_transformers for other models
+        elif self.model_type == "sentence-transformers":
+            # Use sentence_transformers for these models
             return self.model.encode(texts, convert_to_tensor=False).tolist()
+        elif self.model_type == "huggingface":
+            # Use HuggingFace transformers
+            import torch
+            
+            embeddings = []
+            batch_size = 32
+            
+            for i in range(0, len(texts), batch_size):
+                batch = texts[i:i + batch_size]
+                
+                encoded_input = self.tokenizer(
+                    batch, 
+                    padding=True, 
+                    truncation=True, 
+                    max_length=512,
+                    return_tensors='pt'
+                ).to(self.device)
+                
+                with torch.no_grad():
+                    model_output = self.model(**encoded_input)
+                
+                batch_embeddings = self._mean_pooling(
+                    model_output, 
+                    encoded_input['attention_mask']
+                )
+                
+                # Normalize embeddings
+                batch_embeddings = torch.nn.functional.normalize(batch_embeddings, p=2, dim=1)
+                embeddings.extend(batch_embeddings.cpu().tolist())
+            
+            return embeddings
+        else:
+            raise ValueError(f"Unknown model type: {self.model_type}")
     
     def embed_query(self, query: str) -> List[float]:
         """Embed a query string."""
-        if self.model_name == "multilingual-e5-large":
+        if self.model_type == "pinecone-inference":
             # Use Pinecone's inference API for this specific model
             pc = Pinecone(api_key=settings.PINECONE_API_KEY)
             embedding = pc.inference.embed(
@@ -78,9 +197,35 @@ class CustomizableEmbeddingModel:
                 parameters={"input_type": "query", "truncate": "END"}
             )
             return embedding.data[0].values
-        else:
-            # Use sentence_transformers for other models
+        elif self.model_type == "sentence-transformers":
+            # Use sentence_transformers for these models
             return self.model.encode(query, convert_to_tensor=False).tolist()
+        elif self.model_type == "huggingface":
+            # Use HuggingFace transformers
+            import torch
+            
+            encoded_input = self.tokenizer(
+                query, 
+                padding=True, 
+                truncation=True,
+                max_length=512,
+                return_tensors='pt'
+            ).to(self.device)
+            
+            with torch.no_grad():
+                model_output = self.model(**encoded_input)
+            
+            query_embedding = self._mean_pooling(
+                model_output, 
+                encoded_input['attention_mask']
+            )
+            
+            # Normalize embedding
+            query_embedding = torch.nn.functional.normalize(query_embedding, p=2, dim=1)
+            
+            return query_embedding.cpu().tolist()[0]
+        else:
+            raise ValueError(f"Unknown model type: {self.model_type}")
 
 class CustomizablePDFParser:
     def __init__(self, parser_type: str):
@@ -116,6 +261,9 @@ class LangChainService:
                 "maxTokens": 1000,
                 "useTunedModel": False,
                 "tunedModelName": "",
+                "useCustomEmbeddingModel": False,
+                "customEmbeddingModelName": "",
+                "huggingfaceToken": "",
                 "temperature": 0.2,
                 "llmModel": "gpt-4o-mini",
                 "systemPrompt": "You are a helpful assistant that can answer questions and help with tasks.",
@@ -127,9 +275,21 @@ class LangChainService:
         self.pinecone_service = PineconeService()
         self.index = self.pinecone_service.index        
         self.parser = CustomizablePDFParser(advanced_config["pdfParser"] or "PyPDFParser")        
-        self.embedding_model = CustomizableEmbeddingModel(advanced_config["embeddingModel"] or "multilingual-e5-large")
+        
+        # Initialize embedding model with custom model support
+        self.embedding_model = CustomizableEmbeddingModel(
+            model_name=advanced_config.get("embeddingModel", "multilingual-e5-large"),
+            use_custom_model=advanced_config.get("useCustomEmbeddingModel", False),
+            custom_model_name=advanced_config.get("customEmbeddingModelName", ""),
+            huggingface_token=advanced_config.get("huggingfaceToken", "")
+        )
+        
         self.chunker = TextSplitter(advanced_config["splitterType"] or "RecursiveCharacterTextSplitter")
         
+    @property
+    def text_splitter(self):
+        """Provide access to text splitter for backwards compatibility."""
+        return self.chunker
     def parse_document(self, file_path: str) -> List[Document]:
         """Process document using the configured parser."""
         return self.parser.parse(file_path)
