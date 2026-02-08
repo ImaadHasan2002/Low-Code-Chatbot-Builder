@@ -34,6 +34,7 @@ def parse_data(
     """
     visited = set()
     to_visit = [(link, 0)]  # (url, depth)
+    to_visit_urls = {link}  # Set for O(1) lookup
     all_data = []
     
     base_domain = urlparse(link).netloc
@@ -117,6 +118,7 @@ def parse_data(
     
     while to_visit and len(visited) < max_pages:
         current_url, current_depth = to_visit.pop(0)
+        to_visit_urls.discard(current_url)  # Remove from set
         
         # Skip if already visited
         if current_url in visited:
@@ -140,8 +142,9 @@ def parse_data(
             # Get links from the current URL
             new_links = get_page_links(current_url, current_depth)
             for new_link, depth in new_links:
-                if new_link not in visited and new_link not in [url for url, _ in to_visit]:
+                if new_link not in visited and new_link not in to_visit_urls:
                     to_visit.append((new_link, depth))
+                    to_visit_urls.add(new_link)
         
         # Small delay to avoid overwhelming the server
         time.sleep(0.5)
