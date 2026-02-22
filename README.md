@@ -5,7 +5,9 @@ Built as a part of our final year project for Zakir Husain College of Engineerin
 
 A full-stack AI chatbot platform with a FastAPI backend and Next.js frontend.
 
-![Demo](https://github.com/user-attachments/assets/54d84790-75c6-422e-96ae-de04889a3490)
+<video src="assets/demo.mp4" controls width="600">
+  Your browser does not support the video tag. [View demo](assets/demo.mp4)
+</video>
 
 The frontend is built with [Next.js](https://nextjs.org) and uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font).
 
