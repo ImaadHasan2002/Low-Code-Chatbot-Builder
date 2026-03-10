@@ -28,14 +28,25 @@ import * as z from "zod"
 import { useAdvancedConfig } from "@/hooks/use-advanced-config"
 
 const modelConfigSchema = z.object({
+  // HuggingFace Integration
   huggingfaceToken: z.string().optional(),
+  useCustomEmbeddingModel: z.boolean().default(false),
+  customEmbeddingModelName: z.string().optional(),
+  
+  // Embedding Configuration
   embeddingModel: z.string().min(1, "Please select an embedding model"),
+  
+  // Parser Configuration
   splitterType: z.string().min(1, "Please select a splitter type"),
   pdfParser: z.string().min(1, "Please select a PDF parser"),
   csvParser: z.string().min(1, "Please select a CSV parser"),
+  
+  // Text Splitting Configuration
   chunkSize: z.number().min(1).max(2000),
   chunkOverlap: z.number().min(0).max(500),
   separator: z.string(),
+  
+  // LLM Configuration
   maxTokens: z.number().min(1).max(10000),
   useTunedModel: z.boolean().default(false),
   tunedModelName: z.string(),
@@ -50,6 +61,14 @@ const modelConfigSchema = z.object({
   temperature: z.number().min(0).max(1),
   llmModel: z.string().optional(),
   systemPrompt: z.string(),
+  
+  // Web Scraping Configuration
+  scrapingMaxPages: z.number().min(1).max(500).optional(),
+  scrapingMaxDepth: z.number().min(1).max(10).optional(),
+  scrapingTimeout: z.number().min(1).max(60).optional(),
+  scrapingSameDomainOnly: z.boolean().optional(),
+  
+  // Security Configuration
   blockWords: z.array(z.string()),
 })
 
@@ -62,7 +81,9 @@ export default function AdvancedSettingsPage() {
   const form = useForm<ModelConfigValues>({
     resolver: zodResolver(modelConfigSchema),
     defaultValues: {
-      huggingfaceToken: "write your huggingface token here",
+      huggingfaceToken: "",
+      useCustomEmbeddingModel: false,
+      customEmbeddingModelName: "",
       embeddingModel: "multilingual-e5-large",
       pdfParser: "PyPDFParser",
       csvParser: "CSVParser",
@@ -84,6 +105,10 @@ export default function AdvancedSettingsPage() {
       temperature: 0.2,
       llmModel: "openai/gpt-4o-mini",
       systemPrompt: "You are a helpful assistant that can answer questions based on the context provided and don't make up information.",
+      scrapingMaxPages: 50,
+      scrapingMaxDepth: 3,
+      scrapingTimeout: 10,
+      scrapingSameDomainOnly: true,
       blockWords: ['secret', 'confidential', 'private'],
     },
   })
@@ -95,6 +120,7 @@ export default function AdvancedSettingsPage() {
   }, [advancedConfigData, form]);
 
   const useTunedModel = form.watch("useTunedModel")
+  const useCustomEmbeddingModel = form.watch("useCustomEmbeddingModel")
 
   function onSubmit(data: ModelConfigValues) {
     console.log(data)
@@ -295,11 +321,56 @@ export default function AdvancedSettingsPage() {
                         <SelectItem value="stsb-roberta-large">stsb-roberta-large</SelectItem>
                         <SelectItem value="mixedbread-ai/mxbai-embed-large-v1">mixedbread-ai/mxbai-embed-large-v1</SelectItem>
                         <SelectItem value="multilingual-e5-large">multilingual-e5-large</SelectItem>
+                        <SelectItem value="BAAI/bge-large-en-v1.5">BAAI/bge-large-en-v1.5 (HuggingFace)</SelectItem>
+                        <SelectItem value="sentence-transformers/all-mpnet-base-v2">all-mpnet-base-v2 (HuggingFace)</SelectItem>
+                        <SelectItem value="intfloat/e5-large-v2">e5-large-v2 (HuggingFace)</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="useCustomEmbeddingModel"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Use Custom HuggingFace Model</FormLabel>
+                      <FormDescription>
+                        Load a custom embedding model from HuggingFace
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {useCustomEmbeddingModel && (
+                <FormField
+                  control={form.control}
+                  name="customEmbeddingModelName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Custom Embedding Model Name</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="e.g., sentence-transformers/all-MiniLM-L6-v2" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Enter a HuggingFace model identifier (e.g., organization/model-name)
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}
@@ -470,6 +541,115 @@ export default function AdvancedSettingsPage() {
                     <FormDescription>
                       Maximum number of tokens to process in a single request
                     </FormDescription>
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Web Scraping Configuration</CardTitle>
+              <CardDescription>
+                Configure settings for recursive web scraping
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <FormField
+                control={form.control}
+                name="scrapingMaxPages"
+                render={({ field: { value, onChange } }) => (
+                  <FormItem>
+                    <div className="flex justify-between">
+                      <FormLabel>Maximum Pages to Scrape</FormLabel>
+                      <span className="text-sm text-muted-foreground">{value}</span>
+                    </div>
+                    <FormControl>
+                      <Slider
+                        min={1}
+                        max={500}
+                        step={1}
+                        value={[value || 50]}
+                        onValueChange={(vals) => onChange(vals[0])}
+                        className="pt-2"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Maximum number of pages to scrape from a website
+                    </FormDescription>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="scrapingMaxDepth"
+                render={({ field: { value, onChange } }) => (
+                  <FormItem>
+                    <div className="flex justify-between">
+                      <FormLabel>Maximum Crawl Depth</FormLabel>
+                      <span className="text-sm text-muted-foreground">{value}</span>
+                    </div>
+                    <FormControl>
+                      <Slider
+                        min={1}
+                        max={10}
+                        step={1}
+                        value={[value || 3]}
+                        onValueChange={(vals) => onChange(vals[0])}
+                        className="pt-2"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      How many links deep to follow from the starting page
+                    </FormDescription>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="scrapingTimeout"
+                render={({ field: { value, onChange } }) => (
+                  <FormItem>
+                    <div className="flex justify-between">
+                      <FormLabel>Request Timeout (seconds)</FormLabel>
+                      <span className="text-sm text-muted-foreground">{value}</span>
+                    </div>
+                    <FormControl>
+                      <Slider
+                        min={1}
+                        max={60}
+                        step={1}
+                        value={[value || 10]}
+                        onValueChange={(vals) => onChange(vals[0])}
+                        className="pt-2"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Timeout for each HTTP request during scraping
+                    </FormDescription>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="scrapingSameDomainOnly"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Same Domain Only</FormLabel>
+                      <FormDescription>
+                        Only scrape pages from the same domain as the starting URL
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />
