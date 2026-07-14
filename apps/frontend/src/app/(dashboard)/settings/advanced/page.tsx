@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 import {
   Card,
   CardContent,
@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import {
@@ -557,7 +556,7 @@ export default function AdvancedSettingsPage() {
                               />
                             </FormControl>
                             <FormDescription>
-                              The step size at which the model parameters are updated during training. It controls the magnitude of the updates to the model's weights.
+                              The step size at which the model parameters are updated during training. It controls the magnitude of the updates to the model&apos;s weights.
                             </FormDescription>
                           </FormItem>
                         )}
@@ -583,7 +582,7 @@ export default function AdvancedSettingsPage() {
                               />
                             </FormControl>
                             <FormDescription>
-                              One complete pass through the entire training dataset during the training process. It's a measure of how many times the algorithm has seen the entire dataset.
+                              One complete pass through the entire training dataset during the training process. It&apos;s a measure of how many times the algorithm has seen the entire dataset.
                             </FormDescription>
                           </FormItem>
                         )}

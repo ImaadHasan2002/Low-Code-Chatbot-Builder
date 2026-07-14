@@ -51,10 +51,16 @@ botcraft/
 ### Prerequisites
 
 - Node.js >= 18.0.0
-- Python >= 3.11
+- Python >= 3.10
+- MongoDB (local, Docker, or Atlas)
+- Redis (only for background Celery jobs — optional in dev)
 - Docker & Docker Compose (optional)
-- MongoDB
-- Redis
+
+External services (set keys in `.env`; the API boots without them but the
+related features are disabled):
+- **OpenAI** — chatbot responses
+- **Pinecone** — vector storage + hosted embeddings
+- **AWS S3** — PDF storage
 
 ### Installation
 
@@ -74,6 +80,9 @@ botcraft/
    ```bash
    npm run install:all
    ```
+
+   > Optional: local sentence-transformers embedding models (pulls PyTorch ~2 GB):
+   > `pip install -r apps/backend/requirements-ml.txt`
 
 4. **Run in development mode**
    ```bash
@@ -188,30 +197,41 @@ Open [http://localhost:3000](http://localhost:3000) in your browser. Edit `apps/
 ## 🧪 Testing
 
 ### Backend Tests
+
+The test suite uses an in-memory MongoDB (mongomock) — no databases,
+API keys, or network access required.
+
 ```bash
 cd apps/backend
-pytest -v
+pytest -v          # 18 tests: auth, workspaces, themes, configs, services
 ```
 
-### Frontend Tests
+### Frontend Checks
 ```bash
 cd apps/frontend
-npm run test
+npx tsc --noEmit   # type check
+npm run lint       # ESLint
+npm run build      # production build
 ```
 
 ## 📦 Deployment
 
 ### Using Docker (Recommended)
 
-1. Build images:
+1. Create `.env` from `.env.example` and fill in real values. Note:
+   `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_WS_URL` are baked into the frontend
+   bundle at **build** time and must be the URL the *browser* uses to reach
+   the backend (e.g. `https://api.example.com`, not `http://backend:8000`).
+
+2. Build and start:
    ```bash
    docker-compose build
+   docker-compose up -d
+   docker-compose ps          # backend has a /health healthcheck
    ```
 
-2. Start services:
-   ```bash
-   docker-compose up -d
-   ```
+   Services: backend (8000), frontend (3000), MongoDB (27017), Redis (6379),
+   and a Celery worker for background file processing.
 
 ### Manual Deployment
 
@@ -235,6 +255,7 @@ Once the backend is running, access:
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
 - OpenAPI JSON: http://localhost:8000/api/v1/openapi.json
+- Health check: http://localhost:8000/health (reports MongoDB connectivity)
 
 ## 📚 Learn More
 
@@ -253,6 +274,20 @@ The easiest way to deploy the Next.js frontend is via the [Vercel Platform](http
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+## 🔧 Maintenance Notes
+
+- **Dependencies are pinned** in `apps/backend/requirements.txt` and
+  `apps/frontend/package-lock.json`. Upgrade deliberately, run the test
+  suite, and re-pin. Do **not** upgrade `beanie` to 2.x without migrating
+  off Motor (2.x removed Motor support).
+- **Secrets** live only in `.env` (gitignored). Generate `SECRET_KEY` with
+  `openssl rand -hex 32`. Set `DEBUG=false` in production (enables secure
+  cookies).
+- **CI** (`.github/workflows/ci.yml`) runs backend tests and the frontend
+  lint + build on every push/PR to `main`/`develop`. Keep it green.
+- See [RECOVERY.md](RECOVERY.md) for the June 2026 recovery audit: every
+  issue found, its severity, and how it was fixed.
 
 ## 📝 License
 

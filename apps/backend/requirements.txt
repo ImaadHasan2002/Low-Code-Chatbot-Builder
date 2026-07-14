@@ -1,61 +1,65 @@
-sentence-transformers
-
 # FastAPI and server
-fastapi
-uvicorn
-python-multipart
-pydantic
-pydantic-settings
-email-validator
+fastapi==0.136.3
+uvicorn==0.49.0
+python-multipart==0.0.32
+pydantic==2.13.4
+pydantic-settings==2.14.1
+email-validator==2.3.0
 
 # Authentication and security
-python-jose[cryptography]
-passlib[bcrypt]
-python-jose
+python-jose[cryptography]==3.5.0
+bcrypt==5.0.0
 
-# Database
-motor
-pymongo
+# Database (MongoDB)
+motor==3.7.1
+pymongo==4.17.0
+beanie==1.30.0  # v2 drops Motor support; keep 1.x
 
 # AWS
-boto3
+boto3==1.43.27
 
-# Vector database and embeddings
-pinecone
-langchain
-openai
-langchain_community
-langchain_openai
-langgraph
+# Vector database, LLMs and orchestration
+pinecone==9.1.0
+openai==2.41.1
+langchain==1.3.7
+langchain-core==1.4.6
+langchain-community==0.4.2
+langchain-openai==1.3.0
+langchain-text-splitters==1.1.2
+langgraph==1.2.4
 
 # Background tasks
-celery
-redis
+celery==5.6.3
+redis==8.0.0
 
 # Utils
-python-dotenv
-requests
-aiohttp
-structlog
+python-dotenv==1.2.2
+requests==2.34.2
+aiohttp==3.14.1
+structlog==26.1.0
 
 # Testing
-pytest
-pytest-asyncio
-httpx
+pytest==9.0.3
+pytest-asyncio==1.4.0
+pytest-cov==7.1.0
+httpx==0.28.1
+mongomock-motor==0.0.36
 
-# Optional: PDF processing
-PyPDF2
-pdf2image
-pdfplumber
-pdfminer.six
+# PDF processing
+pypdf==6.13.2
+PyPDF2==3.0.1
+pdfplumber==0.11.9
+pdfminer.six==20251230
 
 # Text processing
-tiktoken
-nltk
-langchain_text_splitters
-langchain_core
+tiktoken==0.13.0
+nltk==3.9.4
+pandas==2.3.3
 
-# Optional: Web scraping
-beautifulsoup4
+# Web scraping
+beautifulsoup4==4.15.0
 
-beanie
+# Optional local embedding models (heavy: pulls PyTorch ~2GB).
+# Only needed if you select a sentence-transformers embedding model
+# instead of Pinecone-hosted inference. Install with:
+#   pip install -r requirements-ml.txt

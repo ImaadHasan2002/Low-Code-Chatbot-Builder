@@ -20,8 +20,8 @@ async def signup(user: UserCreate) -> Any:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
-    
-    user_in_db = await auth_service.create_user(user)
+
+    await auth_service.create_user(user)
     return {"message": "User created successfully"}
 
 @router.post("/login")
@@ -29,13 +29,12 @@ async def login(response: Response, credentials: dict) -> Any:
     auth_service = AuthService()
     workspace_service = WorkspaceService()
     user = await auth_service.authenticate_user(credentials["email"], credentials["password"])
-    print(f"User: {user}")
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password"
         )
-    
+
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
@@ -46,33 +45,30 @@ async def login(response: Response, credentials: dict) -> Any:
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,  # Only secure in production
+        secure=not settings.DEBUG,  # secure cookies outside local development
         samesite="lax",
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 600,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/"
     )
 
     # Get user's workspaces
     workspaces = await workspace_service.get_workspace_by_user_id(user.id)
-    print(f"Workspaces: {workspaces}")
     if workspaces and len(workspaces) > 0:
-        # Get the first workspace (assuming one workspace per user for now)
         workspace = workspaces[0]
-        print(f"Workspace: {workspaces[0]}")
-        print(f"Workspace ID: {workspace.id}")
         response.set_cookie(
             key="workspace_id",
             value=str(workspace.id),
             httponly=True,
-            secure=False,
-            samesite="lax", 
-            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 600,
+            secure=not settings.DEBUG,
+            samesite="lax",
+            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             path="/"
         )
-    
+
     return {"message": "Login successful"}
 
 @router.post("/logout")
 async def logout(response: Response):
     response.delete_cookie("access_token")
+    response.delete_cookie("workspace_id")
     return {"message": "Logged out successfully"}

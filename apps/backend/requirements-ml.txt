@@ -1,0 +1,4 @@
+# Optional: local embedding models (heavy — pulls PyTorch).
+# Only required when using "stsb-roberta-large" or
+# "mixedbread-ai/mxbai-embed-large-v1" embedding models locally.
+sentence-transformers>=3.0

@@ -1,9 +1,10 @@
 {
-  "/(dashboard)/knowledge-base/xls/page": "app/(dashboard)/knowledge-base/xls/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js",
-  "/_not-found/page": "app/_not-found/page.js",
-  "/page": "app/page.js",
   "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/page": "app/page.js",
   "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
-  "/(dashboard)/playground/page": "app/(dashboard)/playground/page.js"
+  "/(dashboard)/analytics/page": "app/(dashboard)/analytics/page.js",
+  "/(dashboard)/playground/page": "app/(dashboard)/playground/page.js",
+  "/(dashboard)/knowledge-base/page": "app/(dashboard)/knowledge-base/page.js",
+  "/(dashboard)/knowledge-base/pdfs/page": "app/(dashboard)/knowledge-base/pdfs/page.js",
+  "/(dashboard)/knowledge-base/links/page": "app/(dashboard)/knowledge-base/links/page.js"
 }

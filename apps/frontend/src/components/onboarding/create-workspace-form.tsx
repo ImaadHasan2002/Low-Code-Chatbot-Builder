@@ -21,16 +21,22 @@ import { useWorkspace } from "@/hooks/use-workspace"
 export function CreateWorkspaceForm() {
   const router = useRouter()
   const { createWorkspaceMutation } = useWorkspace()
-  
+
   const form = useForm<CreateWorkspaceInput>({
     resolver: zodResolver(createWorkspaceSchema),
     defaultValues: {
       name: "",
+      website_url: "",
+      crawl_max_pages: 25,
+      crawl_max_depth: 2,
     }
   })
 
   const onSubmit: SubmitHandler<CreateWorkspaceInput> = async (data) => {
-      await createWorkspaceMutation.mutateAsync(data)
+      await createWorkspaceMutation.mutateAsync({
+        ...data,
+        website_url: data.website_url || undefined,
+      })
       router.push("/dashboard");
   }
 
@@ -78,8 +84,52 @@ export function CreateWorkspaceForm() {
               </FormItem>
             )}
           />
-          <Button 
-            type="submit" 
+          <FormField
+            control={form.control}
+            name="website_url"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Website URL</FormLabel>
+                <FormControl>
+                  <Input placeholder="https://example.com" {...field} />
+                </FormControl>
+                <FormDescription>
+                  BotCraft will start crawling this site after the workspace is created.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="crawl_max_pages"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Max Pages</FormLabel>
+                  <FormControl>
+                    <Input type="number" min={1} max={500} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="crawl_max_depth"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Depth</FormLabel>
+                  <FormControl>
+                    <Input type="number" min={0} max={10} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <Button
+            type="submit"
             className="w-full"
             disabled={createWorkspaceMutation.isPending}
           >
@@ -89,4 +139,4 @@ export function CreateWorkspaceForm() {
       </Form>
     </div>
   )
-} 
+}

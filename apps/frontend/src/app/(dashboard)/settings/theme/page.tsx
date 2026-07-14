@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,6 @@ import { BotMessageSquare, Send, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { defaultTheme } from "@/lib/constants/data";
 import { ThemeConfig } from "@/types/config";
-import { useCurrentWorkspace } from "@/stores/workspace-store";
 import { useTheme } from "@/hooks/use-theme";
 
 const ChatMessage = ({ 
@@ -220,6 +219,12 @@ export default function ThemeSettingsPage() {
   const { getThemeQuery, updateThemeMutation } = useTheme();
   const {data: themeConfig} = getThemeQuery;
   const [config, setConfig] = useState(themeConfig ?? defaultTheme);
+
+  useEffect(() => {
+    if (themeConfig) {
+      setConfig(themeConfig);
+    }
+  }, [themeConfig]);
   
 
   if(getThemeQuery?.isLoading) {
@@ -252,8 +257,7 @@ export default function ThemeSettingsPage() {
 //   const generateEmbedCode = () => {
 //     return `<script
 //   src="${window.location.origin}/chatbot.js"
-//   workspaceId-attr="YOUR_WORKSPACE_ID"
-//   userId-attr="YOUR_USER_ID"
+//   data-workspace-id="YOUR_WORKSPACE_ID"
 //   data-theme="${config.theme}"
 //   data-position="${config.position}"
 //   data-primary-color="${config.primaryColor}"

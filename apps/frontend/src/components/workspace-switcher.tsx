@@ -19,8 +19,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { Workspace } from "@/types/workspace"
-import { useWorkspaceStore } from "@/stores/workspace-store"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useWorkspaceStore } from "@/stores/workspace-store"
 
 export function WorkspaceSwitcher({
   workspaces,
@@ -28,14 +28,16 @@ export function WorkspaceSwitcher({
   workspaces: Workspace[]
 }) {
   const { isMobile } = useSidebar()
-  const [activeWorkspace, setActiveWorkspace] = React.useState<Workspace | undefined>(undefined)
+  const { currentWorkspaceId, setCurrentWorkspaceId } = useWorkspaceStore()
+  const activeWorkspace =
+    workspaces.find((workspace) => workspace._id === currentWorkspaceId) ??
+    workspaces[0]
 
-  // Update active workspace whenever workspaces change
   React.useEffect(() => {
-    if (workspaces.length > 0 && !activeWorkspace) {
-      setActiveWorkspace(workspaces[0])
+    if (workspaces.length > 0 && !currentWorkspaceId) {
+      setCurrentWorkspaceId(workspaces[0]._id)
     }
-  }, [workspaces, activeWorkspace])
+  }, [currentWorkspaceId, setCurrentWorkspaceId, workspaces])
   
   // Show a placeholder while data is loading
   if (!activeWorkspace) {
@@ -89,7 +91,7 @@ export function WorkspaceSwitcher({
             {workspaces.map((workspace, index) => (
               <DropdownMenuItem
                 key={workspace._id}
-                onClick={() => setActiveWorkspace(workspace)}
+                onClick={() => setCurrentWorkspaceId(workspace._id)}
                 className="gap-2 p-2"
               >
                 <div className="flex size-6 items-center justify-center rounded-sm border">

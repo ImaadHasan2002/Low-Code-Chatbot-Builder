@@ -1,4 +1,4 @@
-// File: /Users/imaadh/Downloads/botcraft/apps/frontend/src/app/(auth)/login/page.tsx
+// File: /Users/admin/Downloads/Low-Code-Chatbot-Builder/apps/frontend/src/app/(auth)/login/page.tsx
 import * as entry from '../../../../../src/app/(auth)/login/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

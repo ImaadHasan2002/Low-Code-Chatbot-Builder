@@ -23,7 +23,7 @@ export function useWorkspace() {
     queryKey: ["workspaces"],
     queryFn: async () => {
       const { data } = await workspaceAPI.getWorkspaces();
-      addWorkspace(data[0])
+      data.forEach(addWorkspace)
       return data;
     }
   })

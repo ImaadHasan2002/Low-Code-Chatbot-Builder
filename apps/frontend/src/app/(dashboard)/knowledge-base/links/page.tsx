@@ -13,8 +13,9 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react"
+import { ChevronDown, Loader2, MoreHorizontal, Trash2 } from "lucide-react"
 
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -49,14 +50,13 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Label } from "@/components/ui/label"
  
 import { useKnowledgeBase } from "@/hooks/use-knowledge-base"
+import type { KnowledgeBaseItem } from "@/types/knowledge-base"
 
-export type LinkRow = {
-  id: string
-  link: string
-}
+type DeleteFn = (id: string) => void
+type DeletingId = string | undefined
 
-// TODO: Move to some centralized location
-const columns: ColumnDef<LinkRow>[] = [
+function makeColumns(onDelete: DeleteFn, deletingId: DeletingId): ColumnDef<KnowledgeBaseItem>[] {
+  return [
   {
     id: "select",
     header: ({ table }) => (
@@ -80,17 +80,34 @@ const columns: ColumnDef<LinkRow>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "file_url",
-    header: "Link",
+    accessorKey: "name",
+    header: "Page",
     cell: ({ row }) => (
-      <div className="capitalize">{row.getValue("file_url")}</div>
+      <div className="max-w-xs truncate font-medium">{row.original.name || row.original.file_url}</div>
+    ),
+  },
+  {
+    accessorKey: "file_url",
+    header: "URL",
+    cell: ({ row }) => (
+      <div className="max-w-xs truncate text-muted-foreground text-xs">{row.getValue("file_url")}</div>
+    ),
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => (
+      <Badge variant={row.original.status === "failed" ? "destructive" : "secondary"}>
+        {row.original.status ?? "indexed"}
+      </Badge>
     ),
   },
   {
     id: "actions",
     enableHiding: false,
     cell: ({ row }) => {
-      const payment = row.original
+      const knowledgeBase = row.original
+      const isDeleting = deletingId === knowledgeBase._id
 
       return (
         <DropdownMenu>
@@ -103,25 +120,67 @@ const columns: ColumnDef<LinkRow>[] = [
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(payment.id)}
+              onClick={() => navigator.clipboard.writeText(knowledgeBase._id)}
             >
-              Copy payment ID
+              Copy knowledge source ID
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>View customer</DropdownMenuItem>
-            <DropdownMenuItem>View payment details</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a href={knowledgeBase.file_url} target="_blank" rel="noreferrer">
+                Open link
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              disabled={isDeleting}
+              onClick={() => onDelete(knowledgeBase._id)}
+            >
+              {isDeleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+              Delete
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )
     },
   },
-]
+]}
 
 export default function KnowledgeBaseLinksPage() {
-  const { getLinksQuery, scrapeLinkMutation } = useKnowledgeBase()
+  const { getLinksQuery, getCrawlJobsQuery, crawlWebsiteMutation, deleteKnowledgeBaseMutation } = useKnowledgeBase()
   const { data, isLoading, isError, isSuccess } = getLinksQuery
+  const crawlJobs = React.useMemo(
+    () => getCrawlJobsQuery.data?.data.jobs ?? [],
+    [getCrawlJobsQuery.data?.data.jobs]
+  )
 
-  const [link, setLink] = React.useState<string>("")
+  const prevCrawlJobsRef = React.useRef(crawlJobs)
+  React.useEffect(() => {
+    const prevJobs = prevCrawlJobsRef.current
+    const justCompleted = crawlJobs.some(
+      (job) =>
+        job.status === "completed" &&
+        prevJobs.find((p) => p.job_id === job.job_id && p.status !== "completed")
+    )
+    if (justCompleted) {
+      getLinksQuery.refetch()
+    }
+    prevCrawlJobsRef.current = crawlJobs
+  }, [crawlJobs, getLinksQuery])
+
+  const handleDelete = React.useCallback(
+    (id: string) => {
+      if (!window.confirm("Remove this page from the knowledge base?")) return
+      deleteKnowledgeBaseMutation.mutate(id)
+    },
+    [deleteKnowledgeBaseMutation]
+  )
+
+  const [baseUrl, setBaseUrl] = React.useState<string>("")
+  const [maxPages, setMaxPages] = React.useState<number>(25)
+  const [maxDepth, setMaxDepth] = React.useState<number>(2)
+  const [includePaths, setIncludePaths] = React.useState<string>("")
+  const [excludePaths, setExcludePaths] = React.useState<string>("")
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -131,6 +190,11 @@ export default function KnowledgeBaseLinksPage() {
   const [rowSelection, setRowSelection] = React.useState({})
 
   const tableData = isSuccess && data?.data ? data.data.links : []
+
+  const columns = React.useMemo(
+    () => makeColumns(handleDelete, deleteKnowledgeBaseMutation.isPending ? deleteKnowledgeBaseMutation.variables : undefined),
+    [handleDelete, deleteKnowledgeBaseMutation.isPending, deleteKnowledgeBaseMutation.variables]
+  )
 
   const table = useReactTable({
     data: tableData,
@@ -151,45 +215,117 @@ export default function KnowledgeBaseLinksPage() {
     },
   })
 
-  const handleLinkUpload = () => {
+  const splitPaths = (value: string) =>
+    value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
 
-    if (link) {
-      scrapeLinkMutation?.mutate(link)
-    }
+  const handleStartCrawl = () => {
+    if (!baseUrl) return
+    crawlWebsiteMutation.mutate({
+      base_url: baseUrl,
+      max_pages: maxPages,
+      max_depth: maxDepth,
+      include_paths: splitPaths(includePaths),
+      exclude_paths: splitPaths(excludePaths),
+    })
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-4">
+      {crawlJobs.length ? (
+        <div className="rounded-md border p-3">
+          <div className="mb-2 text-sm font-medium">Recent crawl status</div>
+          <div className="grid gap-2 md:grid-cols-2">
+            {crawlJobs.slice(0, 4).map((job) => (
+              <div key={job.job_id} className="flex items-center justify-between gap-3 rounded-md bg-muted/40 px-3 py-2">
+                <div className="min-w-0">
+                  <div className="truncate text-sm">{job.payload.base_url ?? "Website crawl"}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {job.message ?? `${job.processed_items}/${job.total_items || 0} pages`}
+                  </div>
+                </div>
+                <Badge variant={job.status === "failed" ? "destructive" : "secondary"}>
+                  {job.status}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex items-center justify-between py-4">
         <Input
           placeholder="Filter links..."
-          value={(table.getColumn("file_url")?.getFilterValue() as string) ?? ""}
+          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
-            table.getColumn("file_url")?.setFilterValue(event.target.value)
+            table.getColumn("name")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
         />
         <div className="flex items-center gap-2">
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="outline">Add Link</Button>
+              <Button variant="outline">Crawl Website</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Add Link</DialogTitle>
+                <DialogTitle>Crawl Website</DialogTitle>
                 <DialogDescription>
-                  Type a link to be scraped.
+                  Index pages from a website into this workspace.
                 </DialogDescription>
               </DialogHeader>
-              <div className="flex items-center space-x-2">
-                <div className="grid flex-1 gap-2">
-                  <Label htmlFor="link" className="sr-only">
-                    Link
-                  </Label>
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="base-url">Base URL</Label>
                   <Input
-                    id="link"
-                    value={link}
-                    onChange={(event) => setLink(event.target.value)}
+                    id="base-url"
+                    placeholder="https://example.com"
+                    value={baseUrl}
+                    onChange={(event) => setBaseUrl(event.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="max-pages">Max pages</Label>
+                    <Input
+                      id="max-pages"
+                      type="number"
+                      min={1}
+                      max={500}
+                      value={maxPages}
+                      onChange={(event) => setMaxPages(Number(event.target.value))}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="max-depth">Depth</Label>
+                    <Input
+                      id="max-depth"
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={maxDepth}
+                      onChange={(event) => setMaxDepth(Number(event.target.value))}
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="include-paths">Include paths</Label>
+                  <Input
+                    id="include-paths"
+                    placeholder="/docs, /pricing"
+                    value={includePaths}
+                    onChange={(event) => setIncludePaths(event.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="exclude-paths">Exclude paths</Label>
+                  <Input
+                    id="exclude-paths"
+                    placeholder="/blog, /legal"
+                    value={excludePaths}
+                    onChange={(event) => setExcludePaths(event.target.value)}
                   />
                 </div>
               </div>
@@ -197,8 +333,13 @@ export default function KnowledgeBaseLinksPage() {
                 <DialogClose asChild>
                   <Button type="button" variant="secondary">Close</Button>
                 </DialogClose>
-                <Button type="submit" onClick={handleLinkUpload}>
-                  Add Link
+                <Button
+                  type="submit"
+                  onClick={handleStartCrawl}
+                  disabled={crawlWebsiteMutation.isPending}
+                >
+                  {crawlWebsiteMutation.isPending ? <Loader2 className="animate-spin" /> : null}
+                  Start Crawl
                 </Button>
               </DialogFooter>
             </DialogContent>

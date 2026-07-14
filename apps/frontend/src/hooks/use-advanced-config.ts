@@ -1,5 +1,5 @@
 // in botcraft-frontend/src/hooks/use-advanced-config.ts
-import { useQuery, useMutation, QueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { advancedConfigAPI } from "@/lib/api/endpoints/advanced-config";
 import type { AdvancedConfig } from "@/types/config";
 import { useCurrentWorkspace } from "@/stores/workspace-store";

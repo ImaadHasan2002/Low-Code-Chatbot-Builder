@@ -52,9 +52,24 @@ export const useWorkspaceStore = create<WorkspaceState & WorkspaceActions>()(
         },
         
         addWorkspace: (workspace) => {
+          if (!workspace?._id) {
+            return
+          }
+
           set((state) => {
-            state.workspaces.push(workspace)
-            if (!state.currentWorkspaceId) {
+            const existingIndex = state.workspaces.findIndex(
+              (item: Workspace) => item._id === workspace._id
+            )
+            if (existingIndex >= 0) {
+              state.workspaces[existingIndex] = workspace
+            } else {
+              state.workspaces.push(workspace)
+            }
+
+            const currentWorkspaceExists = state.workspaces.some(
+              (item: Workspace) => item._id === state.currentWorkspaceId
+            )
+            if (!state.currentWorkspaceId || !currentWorkspaceExists) {
               state.currentWorkspaceId = workspace._id
               state.themeId = workspace.theme_config_id
             }

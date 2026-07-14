@@ -11,3 +11,8 @@ node_modules
 
 # OS files
 .DS_Store
+
+# Build artifacts
+.next/
+**/.next/
+*.tsbuildinfo
