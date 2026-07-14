@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation"
+
 export default function KnowledgeBasePage() {
-  return <div>KnowledgeBasePage</div>
+  redirect("/knowledge-base/pdfs")
 }

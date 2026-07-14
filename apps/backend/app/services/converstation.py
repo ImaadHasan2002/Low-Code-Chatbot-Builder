@@ -1,5 +1,7 @@
-from app.models.conversation import Conversation
-from app.core.config import get_settings
+# NOTE: filename kept as "converstation.py" (sic) for backwards compatibility.
+# Prefer importing from app.services.conversation_service going forward.
+from ..core.config import get_settings
+from ..models.conversation import Conversation
 
 
 class ConversationService:
@@ -7,6 +9,5 @@ class ConversationService:
         self.settings = get_settings()
 
     async def create_conversation(self, conversation: Conversation):
-        response = await Conversation.insert_one(conversation)
-        print("response", response)
-        return response._id
+        await conversation.insert()
+        return str(conversation.id)

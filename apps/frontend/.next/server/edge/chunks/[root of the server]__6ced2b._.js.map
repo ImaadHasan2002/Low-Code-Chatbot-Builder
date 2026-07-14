@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 23, "column": 0}, "map": {"version":3,"sources":["turbopack://[project]/apps/frontend/src/middleware.ts"],"sourcesContent":["import { NextResponse } from 'next/server'\nimport type { NextRequest } from 'next/server'\n\n// This function can be marked `async` if using `await` inside\nexport function middleware(request: NextRequest) {\n  const token = request.cookies.get('access_token')\n  \n  if (!token) {\n    return NextResponse.redirect(new URL('/login', request.url))\n  }\n  \n  return NextResponse.next()\n}\n\n// See \"Matching Paths\" below to learn more\nexport const config = {\n  matcher: ['/dashboard/:path*']\n}"],"names":[],"mappings":";;;;AAAA;AAAA;;AAIO,SAAS,WAAW,OAAoB;IAC7C,MAAM,QAAQ,QAAQ,OAAO,CAAC,GAAG,CAAC;IAElC,IAAI,CAAC,OAAO;QACV,OAAO,qLAAA,CAAA,eAAY,CAAC,QAAQ,CAAC,IAAI,IAAI,UAAU,QAAQ,GAAG;IAC5D;IAEA,OAAO,qLAAA,CAAA,eAAY,CAAC,IAAI;AAC1B;AAGO,MAAM,SAAS;IACpB,SAAS;QAAC;KAAoB;AAChC"}},
-    {"offset": {"line": 42, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"A"}}]
-}

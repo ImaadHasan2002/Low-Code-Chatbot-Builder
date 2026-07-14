@@ -13,4 +13,7 @@ export type Workspace = {
 
 export type WorkspaceCreate = {
   name: string
+  website_url?: string
+  crawl_max_pages?: number
+  crawl_max_depth?: number
 }

@@ -19,6 +19,7 @@ class AuthService:
         try:
             user_in_db = UserInDB(
                 email=user.email,
+                username=user.name,
                 hashed_password=get_password_hash(user.password),
                 subscription_plan=user.subscription_plan
             )

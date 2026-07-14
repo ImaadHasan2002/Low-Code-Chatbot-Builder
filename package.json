@@ -9,25 +9,26 @@
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "cd apps/backend && PYTHONPATH=$(pwd) uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
-    "dev:frontend": "cd apps/frontend && npm run dev",
+    "dev:backend": "cross-env PYTHONPATH=apps/backend python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+    "dev:frontend": "node node_modules/next/dist/bin/next dev apps/frontend",
     "build": "npm run build:frontend",
     "build:frontend": "cd apps/frontend && npm run build",
     "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
-    "start:backend": "cd apps/backend && PYTHONPATH=$(pwd) uvicorn app.main:app --host 0.0.0.0 --port 8000",
-    "start:frontend": "cd apps/frontend && npm run start",
+    "start:backend": "cross-env PYTHONPATH=apps/backend python -m uvicorn app.main:app --host 0.0.0.0 --port 8000",
+    "start:frontend": "node node_modules/next/dist/bin/next start apps/frontend",
     "lint": "npm run lint:frontend",
     "lint:frontend": "cd apps/frontend && npm run lint",
     "test": "npm run test:backend",
     "test:backend": "cd apps/backend && pytest",
-    "install:all": "npm install && pip install -r apps/backend/requirements.txt",
+    "install:all": "npm install && python -m pip install -r apps/backend/requirements.txt",
     "docker:build": "docker-compose build",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "clean": "rm -rf node_modules apps/frontend/node_modules apps/frontend/.next"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3"
   },
   "engines": {
     "node": ">=18.0.0",

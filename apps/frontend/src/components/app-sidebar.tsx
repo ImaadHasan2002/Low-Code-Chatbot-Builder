@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import {
-  BookOpen,
   Bot,
   LifeBuoy,
   Send,
@@ -85,7 +84,7 @@ const data = {
           url: "/knowledge-base/links",
         },
         {
-          title: "Xls",
+          title: "CSV/XLS",
           url: "/knowledge-base/xls",
         },
         {
@@ -95,6 +94,10 @@ const data = {
         {
           title: "Images",
           url: "/knowledge-base/images",
+        },
+        {
+          title: "Videos",
+          url: "/knowledge-base/videos",
         },
       ],
     },

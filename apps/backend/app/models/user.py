@@ -24,6 +24,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     email: EmailStr
     password: str
+    name: Optional[str] = None
     subscription_plan: str = "free"
 
 class UserInDB(Document):
